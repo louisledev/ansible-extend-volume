@@ -3,68 +3,54 @@
   become: true
   vars:
     vg_name: centos_centos-ks 
-    existing_devices: /dev/sda2
-    new_device: /dev/sdb
-    new_lv_name: docker
-    docker_data_dir_name: docker
-    docker_data_dir_parent: /var/lib
-    tmp_data_folder: /tmp/_docker
-
-  tasks:
-    - name: Compute full path docker data
-      set_fact:
-        _docker_data_dir: "{{ docker_data_dir_parent }}/{{ docker_data_dir_name }}"
+    lv_name: root 
+    vg_devices: "/dev/sda2,/dev/sdb"
     
-    - debug:
-        msg: "_docker_data_dir: {{ _docker_data_dir }}"
-
-    - name: Stop kubelet
-      systemd:
-        name: kubelet
-        state: stopped
-
-    - name: Stop docker
-      systemd:
-        name: docker
-        state: stopped
-        
-    - name: extend volume group
+  tasks:
+    - name: Create/Extend volume group
       lvg:
         vg: "{{ vg_name }}"
-        pvs: "{{ existing_devices }},{{ new_device }}"
+        pvs: "{{ vg_devices }}"
+      register: volume_group_result
 
-    - name: Create a logical volume the size of all remaining space in the volume group
+    - name: Show result
+      debug:
+        msg: "{{ volume_group_result }}"
+
+    - name: Extend the logical volume to consume all remaining space in the volume group
       lvol:
         vg: "{{ vg_name }}"
-        lv: "{{ new_lv_name }}"
-        size: 100%FREE
+        lv: "{{ lv_name }}"
+        size: +100%FREE 
+        resizefs: true
+      when: volume_group_result.changed
 
-    - name: Create an xfs filesystem on new volume
-      filesystem:
-        fstype: xfs
-        dev: "/dev/{{ vg_name}}/{{ new_lv_name }}"
+    # - name: Create an xfs filesystem on new volume
+    #   filesystem:
+    #     fstype: xfs
+    #     dev: "/dev/{{ vg_name}}/{{ new_lv_name }}"
     
-    - name: Ensure docker folder exists
-      file:
-        path: "{{ _docker_data_dir }}"
-        state: directory
+    # - name: Ensure docker folder exists
+    #   file:
+    #     path: "{{ _docker_data_dir }}"
+    #     state: directory
 
-    - name: Mount new volume at docker data 
-      mount:
-        path: "{{ _docker_data_dir }}"
-        src: "/dev/{{ vg_name}}/{{ new_lv_name }}"
-        fstype: xfs
-        state: mounted
+    # - name: Mount new volume at docker data 
+    #   mount:
+    #     path: "{{ _docker_data_dir }}"
+    #     src: "/dev/{{ vg_name}}/{{ new_lv_name }}"
+    #     fstype: xfs
+    #     state: mounted
           
-    - name: Start docker
-      systemd:
-        name: docker
-        state: restarted
-        enabled: yes  
+    # - name: Start docker
+    #   systemd:
+    #     name: docker
+    #     state: restarted
+    #     enabled: yes  
 
-    - name: Start kubelet
-      systemd:
-        name: kubelet
-        state: started
-        enabled: yes  
+    # - name: Start kubelet
+    #   systemd:
+    #     name: kubelet
+    #     state: started
+    #     enabled: yes  
     
