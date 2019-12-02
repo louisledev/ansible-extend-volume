@@ -1,11 +1,4 @@
 ---
-# Steps :
-# 1. Remove all snapshots for the VMs in vSphere/ESXi
-# 2. Shutdown the VMs
-# 3. Increase the disk size
-# 4. Play this playbook.
-# see inspiration: https://www.epilis.gr/en/blog/2017/08/09/extending-root-fs-whole-farm/
-
 - hosts: all
   become: true
   vars:
